@@ -98,7 +98,7 @@ export GWS_BASE="${VAULT_DIR}/.gws"
 cd "${VAULT_DIR}"
 
 while true; do
-    RC_LOG=$(mktemp /tmp/claude-rc-XXXXXX.log)
+    RC_LOG=$(mktemp /tmp/claude-rcXXXXXX)
     bashio::log.info "Starting claude remote-control..."
 
     claude remote-control \

@@ -3,6 +3,9 @@ FROM $BUILD_FROM
 
 ARG BUILD_ARCH=amd64
 
+# Required for git and npm to work in HA container environment
+ENV HOME=/root
+
 # Install system packages
 RUN apk add --no-cache \
     bash \

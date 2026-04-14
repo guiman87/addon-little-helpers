@@ -1,7 +1,7 @@
-name: "Claude Terminal"
+name: "Little Helpers"
 version: "1.0.0"
 slug: "claude-terminal"
-description: "Claude Code web terminal for the little_helpers life wiki"
+description: "Personal AI assistant for Guille's life wiki — daily briefings, knowledge base, integrations"
 init: false
 arch:
   - aarch64
@@ -11,7 +11,7 @@ arch:
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:robot
-panel_title: "Claude Terminal"
+panel_title: "Little Helpers"
 map:
   - config:rw
 options:

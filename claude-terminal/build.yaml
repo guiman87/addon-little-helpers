@@ -5,7 +5,7 @@ build_from:
   armhf: "ghcr.io/hassio-addons/base/armv7:stable"
   armv7: "ghcr.io/hassio-addons/base/armv7:stable"
 labels:
-  org.opencontainers.image.title: "Claude Terminal"
-  org.opencontainers.image.description: "Claude Code web terminal for the little_helpers life wiki"
+  org.opencontainers.image.title: "Little Helpers"
+  org.opencontainers.image.description: "Personal AI assistant for Guille's life wiki — daily briefings, knowledge base, integrations"
   org.opencontainers.image.source: "https://github.com/guiman87/addon-little-helpers"
   org.opencontainers.image.licenses: "MIT"

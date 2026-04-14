@@ -4,12 +4,11 @@ Home Assistant custom addon repository for Guille's life wiki.
 
 ## Addons
 
-### Claude Terminal
+### Little Helpers
 
-A web terminal (powered by [ttyd](https://github.com/tsl0922/ttyd)) that runs
-[Claude Code](https://github.com/anthropics/claude-code) inside the
-`little_helpers` life wiki vault. Access it from any device via the Home
-Assistant UI sidebar.
+A personal AI assistant (powered by [Claude Code](https://github.com/anthropics/claude-code)
+and [ttyd](https://github.com/tsl0922/ttyd)) running inside the `little_helpers`
+life wiki vault. Access it from any device via the Home Assistant UI sidebar.
 
 **Features:**
 - Full Claude Code REPL in the browser (works on mobile Safari/Chrome)

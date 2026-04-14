@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Background git sync loop
+# Background git sync loop for the HA addon.
+# Strategy: commit local → pull (merge, not rebase) → push.
+# Markdown conflicts are resolved automatically via .gitattributes (union merge).
 # Usage: sync.sh <vault_dir> <branch> <interval_seconds>
 
 export HOME=/root
@@ -17,28 +19,26 @@ while true; do
 
     cd "${VAULT_DIR}" || { bashio::log.warning "Sync: vault dir not found, skipping"; continue; }
 
-    # Pull remote changes first (rebase to avoid merge commits)
-    if git fetch origin "${BRANCH}" 2>/dev/null; then
-        git rebase "origin/${BRANCH}" 2>/dev/null || {
-            bashio::log.warning "Sync: rebase conflict — skipping push this cycle"
-            git rebase --abort 2>/dev/null || true
-            continue
-        }
-    else
-        bashio::log.warning "Sync: fetch failed (offline?) — will try push anyway"
-    fi
-
-    # Stage and commit any local changes made by claude
+    # ── Step 1: commit any local changes ──────────────────────────────────────
     if [ -n "$(git status --porcelain)" ]; then
         git add -A
         TIMESTAMP=$(date '+%Y-%m-%d %H:%M')
-        if git commit -m "sync: auto-commit from HA addon at ${TIMESTAMP}" \
-            --author="Claude HA Addon <claude-ha@localhost>" 2>/dev/null; then
-            git push origin "${BRANCH}" 2>/dev/null && \
-                bashio::log.info "Sync: pushed changes to ${BRANCH}" || \
-                bashio::log.warning "Sync: push failed (check github_token)"
-        fi
-    else
-        bashio::log.debug "Sync: no changes to commit"
+        git commit -m "sync: auto-commit from HA addon at ${TIMESTAMP}" \
+            --author="Claude HA Addon <claude-ha@localhost>" 2>/dev/null \
+            && bashio::log.info "Sync: committed local changes" \
+            || { bashio::log.warning "Sync: commit failed, skipping cycle"; continue; }
     fi
+
+    # ── Step 2: pull remote changes (merge, not rebase) ───────────────────────
+    # .gitattributes sets *.md merge=union so markdown conflicts auto-resolve.
+    if ! git pull --no-rebase origin "${BRANCH}" 2>/dev/null; then
+        bashio::log.warning "Sync: pull/merge failed — aborting and will retry next cycle"
+        git merge --abort 2>/dev/null || true
+        continue
+    fi
+
+    # ── Step 3: push ──────────────────────────────────────────────────────────
+    git push origin "${BRANCH}" 2>/dev/null \
+        && bashio::log.info "Sync: pushed to ${BRANCH}" \
+        || bashio::log.warning "Sync: push failed (check github_token)"
 done

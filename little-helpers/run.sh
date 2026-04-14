@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+export HOME=/root
+
 source /usr/lib/bashio/bashio.sh
 
 # ── Read addon options ────────────────────────────────────────────────────────

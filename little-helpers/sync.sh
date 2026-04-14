@@ -2,6 +2,8 @@
 # Background git sync loop
 # Usage: sync.sh <vault_dir> <branch> <interval_seconds>
 
+export HOME=/root
+
 VAULT_DIR="$1"
 BRANCH="$2"
 INTERVAL="${3:-900}"

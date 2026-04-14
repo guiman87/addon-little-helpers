@@ -18,7 +18,6 @@ GWS_SECRET=$(bashio::config 'gws_client_secret_json' || true)
 NOTIFICATION_SERVICE=$(bashio::config 'notification_service' || true)
 NOTIFICATION_SERVICE="${NOTIFICATION_SERVICE:-notify}"
 CLAUDE_AUTH_JSON=$(bashio::config 'claude_auth_json' || true)
-CLAUDE_CREDENTIALS_JSON=$(bashio::config 'claude_credentials_json' || true)
 
 VAULT_DIR="/config/little-helpers"
 
@@ -52,17 +51,6 @@ if ! bashio::var.is_empty "${CLAUDE_AUTH_JSON}"; then
     bashio::log.info "Writing claude.ai auth credentials..."
     printf '%s\n' "${CLAUDE_AUTH_JSON}" > "${CLAUDE_JSON_PERSIST}"
     chmod 600 "${CLAUDE_JSON_PERSIST}"
-fi
-
-# ── Inject claude.ai OAuth tokens if provided ────────────────────────────────
-# ~/.claude/.credentials.json holds the OAuth access/refresh tokens that
-# remote-control requires. Without this, `claude remote-control` fails with
-# "You must be logged in".
-CLAUDE_CREDENTIALS_PERSIST="/config/claude-config/.credentials.json"
-if ! bashio::var.is_empty "${CLAUDE_CREDENTIALS_JSON}"; then
-    bashio::log.info "Writing claude.ai OAuth credentials..."
-    printf '%s\n' "${CLAUDE_CREDENTIALS_JSON}" > "${CLAUDE_CREDENTIALS_PERSIST}"
-    chmod 600 "${CLAUDE_CREDENTIALS_PERSIST}"
 fi
 
 # ── Validate required secrets ─────────────────────────────────────────────────
@@ -109,7 +97,7 @@ SYNC_INTERVAL_SECS=$(( SYNC_INTERVAL * 60 ))
 bashio::log.info "Background sync every ${SYNC_INTERVAL} min (${SYNC_INTERVAL_SECS}s)"
 /sync.sh "${VAULT_DIR}" "${VAULT_BRANCH}" "${SYNC_INTERVAL_SECS}" &
 
-# ── Start Claude Code in remote control mode (restart loop) ───────────────────
+# ── Export env for interactive terminal use ───────────────────────────────────
 export ANTHROPIC_API_KEY
 export GITHUB_TOKEN
 export GH_TOKEN="${GITHUB_TOKEN}"
@@ -119,52 +107,8 @@ export GWS_BASE="${VAULT_DIR}/.gws"
 
 cd "${VAULT_DIR}"
 
-while true; do
-    RC_LOG=$(mktemp /tmp/claude-rcXXXXXX)
-    bashio::log.info "Starting claude remote-control..."
+bashio::log.info "Addon ready. Open a terminal and run: claude"
 
-    claude remote-control \
-        --name "Little Helpers $(date '+%Y-%m-%d')" \
-        > "${RC_LOG}" 2>&1 &
-    RC_PID=$!
-
-    # Stream output to HA log in background
-    tail -f "${RC_LOG}" >&2 &
-    TAIL_PID=$!
-
-    # Poll up to 60s for the session URL
-    RC_URL=""
-    for i in $(seq 1 60); do
-        sleep 1
-        if ! kill -0 "${RC_PID}" 2>/dev/null; then
-            bashio::log.warning "claude remote-control exited during startup"
-            break
-        fi
-        RC_URL=$(grep -oE 'https://claude\.ai/code[^[:space:]"]*' "${RC_LOG}" | head -1 || true)
-        if [ -n "${RC_URL}" ]; then
-            break
-        fi
-    done
-
-    if [ -n "${RC_URL}" ]; then
-        bashio::log.info "Remote control session URL: ${RC_URL}"
-        # Send HA notification via supervisor API
-        curl -s -X POST \
-            -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-            -H "Content-Type: application/json" \
-            "http://supervisor/core/api/services/notify/${NOTIFICATION_SERVICE}" \
-            -d "{\"title\": \"Claude Code ready\", \"message\": \"${RC_URL}\"}" \
-            && bashio::log.info "Notification sent via ${NOTIFICATION_SERVICE}" \
-            || bashio::log.warning "HA notification failed (check notification_service config)"
-    else
-        bashio::log.warning "No remote control URL found within 60s"
-    fi
-
-    # Wait for the process to exit
-    wait "${RC_PID}" || true
-    kill "${TAIL_PID}" 2>/dev/null || true
-    rm -f "${RC_LOG}"
-
-    bashio::log.info "claude remote-control exited — restarting in 10s..."
-    sleep 10
-done
+# Keep container alive — the sync loop runs in background; user starts
+# Claude Code manually via the HA terminal.
+tail -f /dev/null

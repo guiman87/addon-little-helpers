@@ -21,7 +21,6 @@ options:
   gws_client_secret_json: ""
   notification_service: "notify"
   claude_auth_json: ""
-  claude_credentials_json: ""
 schema:
   anthropic_api_key: password
   github_token: password
@@ -33,4 +32,3 @@ schema:
   gws_client_secret_json: password
   notification_service: str
   claude_auth_json: password
-  claude_credentials_json: password

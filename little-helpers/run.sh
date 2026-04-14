@@ -99,5 +99,4 @@ exec ttyd \
     --interface 0.0.0.0 \
     --writable \
     --max-clients 3 \
-    --title "Little Helpers" \
     /usr/local/bin/claude-session.sh

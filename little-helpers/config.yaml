@@ -1,5 +1,5 @@
 name: "Little Helpers"
-version: "1.0.12"
+version: "1.0.13"
 slug: "little-helpers"
 description: "Personal AI assistant for Guille's life wiki — daily briefings, knowledge base, integrations"
 init: false
@@ -8,6 +8,10 @@ arch:
   - amd64
   - armhf
   - armv7
+ingress: true
+ingress_port: 7681
+panel_icon: mdi:robot
+panel_title: Little Helpers
 map:
   - config:rw
 options:

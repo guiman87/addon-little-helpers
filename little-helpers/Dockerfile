@@ -19,6 +19,15 @@ RUN apk add --no-cache \
     tar \
     wget
 
+# Install ttyd for web terminal (static binary — not in Alpine apk repos)
+RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "aarch64" || \
+           [ "$BUILD_ARCH" = "armv7" ]  && echo "armhf"   || \
+           [ "$BUILD_ARCH" = "armhf" ]  && echo "armhf"   || \
+           echo "x86_64") && \
+    wget -qO /usr/local/bin/ttyd \
+      "https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.${ARCH}" && \
+    chmod +x /usr/local/bin/ttyd
+
 # Install gh CLI — static binary from GitHub releases
 RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "arm64" || \
            [ "$BUILD_ARCH" = "armv7" ] && echo "arm" || \

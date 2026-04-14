@@ -107,8 +107,12 @@ export GWS_BASE="${VAULT_DIR}/.gws"
 
 cd "${VAULT_DIR}"
 
-bashio::log.info "Addon ready. Open a terminal and run: claude"
+bashio::log.info "Starting web terminal (ttyd) on port 7681..."
 
-# Keep container alive — the sync loop runs in background; user starts
-# Claude Code manually via the HA terminal.
-tail -f /dev/null
+# ttyd inherits the exported env vars above, so every bash session it spawns
+# will have ANTHROPIC_API_KEY, GWS_BASE, etc. already set.
+exec ttyd \
+    --port 7681 \
+    --base-path "${INGRESS_PATH:-/}" \
+    --writable \
+    bash

@@ -20,23 +20,23 @@ VAULT_BRANCH=$(bashio::config 'vault_branch')
 SYNC_INTERVAL=$(bashio::config 'sync_interval_minutes')
 GWS_SECRET=$(bashio::config 'gws_client_secret_json')
 
-VAULT_DIR="/share/little-helpers"
+VAULT_DIR="/config/little-helpers"
 
 # ── Persist Claude config across restarts ─────────────────────────────────────
 # /root/.claude/ and /root/.claude.json are both wiped on container restart.
-# Symlink both to /share/ so first-run setup, MCP credentials, and settings
+# Symlink both to /config/ so first-run setup, MCP credentials, and settings
 # survive reboots.
-bashio::log.info "Setting up persistent Claude config at /share/claude-config..."
-mkdir -p /share/claude-config
+bashio::log.info "Setting up persistent Claude config at /config/claude-config..."
+mkdir -p /config/claude-config
 
 # Persist the .claude/ directory
-ln -sfn /share/claude-config /root/.claude
+ln -sfn /config/claude-config /root/.claude
 
 # Persist the .claude.json config file (sibling of .claude/, NOT inside it)
-CLAUDE_JSON_PERSIST="/share/claude-config/.claude.json"
+CLAUDE_JSON_PERSIST="/config/claude-config/.claude.json"
 if [ ! -s "${CLAUDE_JSON_PERSIST}" ]; then
     # No persisted config yet — check if a backup was left from a previous run
-    latest_backup=$(ls -t /share/claude-config/backups/.claude.json.backup.* 2>/dev/null | head -1 || true)
+    latest_backup=$(ls -t /config/claude-config/backups/.claude.json.backup.* 2>/dev/null | head -1 || true)
     if [ -n "${latest_backup}" ]; then
         bashio::log.info "Restoring .claude.json from backup: ${latest_backup}"
         cp "${latest_backup}" "${CLAUDE_JSON_PERSIST}"
@@ -101,7 +101,7 @@ cd ${VAULT_DIR}
 cat << 'BANNER'
 ╔══════════════════════════════════════════════════════════╗
 ║         Claude Code — little_helpers life wiki           ║
-║  Vault: /share/little-helpers                            ║
+║  Vault: /config/little-helpers                           ║
 ║  Type:  /daily      for today's briefing                 ║
 ║  Type:  /query <q>  to search the wiki                   ║
 ║  Type:  /ingest <url|path>  to add a source              ║

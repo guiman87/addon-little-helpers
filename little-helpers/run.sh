@@ -15,6 +15,8 @@ VAULT_REPO=$(bashio::config 'vault_repo' || true)
 VAULT_BRANCH=$(bashio::config 'vault_branch' || true)
 SYNC_INTERVAL=$(bashio::config 'sync_interval_minutes' || true)
 GWS_SECRET=$(bashio::config 'gws_client_secret_json' || true)
+NOTIFICATION_SERVICE=$(bashio::config 'notification_service' || true)
+NOTIFICATION_SERVICE="${NOTIFICATION_SERVICE:-notify}"
 
 VAULT_DIR="/config/little-helpers"
 
@@ -80,47 +82,67 @@ if ! bashio::var.is_empty "${GITHUB_TOKEN}"; then
         bashio::log.warning "gh CLI auth failed — GitHub PRs may not work"
 fi
 
-# ── Write per-session shell script ───────────────────────────────────────────
-# ttyd runs this for each browser connection. It sets env vars then execs claude.
-cat > /usr/local/bin/claude-session.sh << SESSIONEOF
-#!/usr/bin/env bash
-export ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}"
-export GITHUB_TOKEN="${GITHUB_TOKEN}"
-export GH_TOKEN="${GITHUB_TOKEN}"
-export JIRA_EMAIL="${JIRA_EMAIL}"
-export JIRA_API_TOKEN="${JIRA_API_TOKEN}"
-export GWS_BASE="${VAULT_DIR}/.gws"
-
-cd ${VAULT_DIR}
-
-cat << 'BANNER'
-╔══════════════════════════════════════════════════════════╗
-║         Claude Code — little_helpers life wiki           ║
-║  Vault: /config/little-helpers                           ║
-║  Type:  /daily      for today's briefing                 ║
-║  Type:  /query <q>  to search the wiki                   ║
-║  Type:  /ingest <url|path>  to add a source              ║
-╚══════════════════════════════════════════════════════════╝
-BANNER
-
-exec claude
-SESSIONEOF
-chmod 700 /usr/local/bin/claude-session.sh
-
 # ── Start background git sync ─────────────────────────────────────────────────
 SYNC_INTERVAL_SECS=$(( SYNC_INTERVAL * 60 ))
 bashio::log.info "Background sync every ${SYNC_INTERVAL} min (${SYNC_INTERVAL_SECS}s)"
 /sync.sh "${VAULT_DIR}" "${VAULT_BRANCH}" "${SYNC_INTERVAL_SECS}" &
 
-# ── Start ttyd ────────────────────────────────────────────────────────────────
-# --interface 0.0.0.0  required for HA ingress to proxy through
-# --writable           allow keyboard input (default is read-only)
-# --once=false         allow reconnections after disconnect
-# --max-clients 3      cap concurrent sessions
-bashio::log.info "Starting ttyd on port 8099..."
-exec ttyd \
-    --port 8099 \
-    --interface 0.0.0.0 \
-    --writable \
-    --max-clients 3 \
-    /usr/local/bin/claude-session.sh
+# ── Start Claude Code in remote control mode (restart loop) ───────────────────
+export ANTHROPIC_API_KEY
+export GITHUB_TOKEN
+export GH_TOKEN="${GITHUB_TOKEN}"
+export JIRA_EMAIL
+export JIRA_API_TOKEN
+export GWS_BASE="${VAULT_DIR}/.gws"
+
+cd "${VAULT_DIR}"
+
+while true; do
+    RC_LOG=$(mktemp /tmp/claude-rc-XXXXXX.log)
+    bashio::log.info "Starting claude remote-control..."
+
+    claude remote-control \
+        --name "Little Helpers $(date '+%Y-%m-%d')" \
+        > "${RC_LOG}" 2>&1 &
+    RC_PID=$!
+
+    # Stream output to HA log in background
+    tail -f "${RC_LOG}" >&2 &
+    TAIL_PID=$!
+
+    # Poll up to 60s for the session URL
+    RC_URL=""
+    for i in $(seq 1 60); do
+        sleep 1
+        if ! kill -0 "${RC_PID}" 2>/dev/null; then
+            bashio::log.warning "claude remote-control exited during startup"
+            break
+        fi
+        RC_URL=$(grep -oE 'https://claude\.ai/code[^[:space:]"]*' "${RC_LOG}" | head -1 || true)
+        if [ -n "${RC_URL}" ]; then
+            break
+        fi
+    done
+
+    if [ -n "${RC_URL}" ]; then
+        bashio::log.info "Remote control session URL: ${RC_URL}"
+        # Send HA notification via supervisor API
+        curl -s -X POST \
+            -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "http://supervisor/core/api/services/notify/${NOTIFICATION_SERVICE}" \
+            -d "{\"title\": \"Claude Code ready\", \"message\": \"${RC_URL}\"}" \
+            && bashio::log.info "Notification sent via ${NOTIFICATION_SERVICE}" \
+            || bashio::log.warning "HA notification failed (check notification_service config)"
+    else
+        bashio::log.warning "No remote control URL found within 60s"
+    fi
+
+    # Wait for the process to exit
+    wait "${RC_PID}" || true
+    kill "${TAIL_PID}" 2>/dev/null || true
+    rm -f "${RC_LOG}"
+
+    bashio::log.info "claude remote-control exited — restarting in 10s..."
+    sleep 10
+done

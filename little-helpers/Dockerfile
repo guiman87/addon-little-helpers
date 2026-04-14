@@ -32,16 +32,6 @@ RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "arm64" || \
     chmod +x /usr/local/bin/gh && \
     rm -rf /tmp/gh*
 
-# Install ttyd — static binary from GitHub releases (no runtime deps)
-RUN TTYD_VERSION="1.7.7" && \
-    ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "aarch64" || \
-           [ "$BUILD_ARCH" = "armv7" ] && echo "armhf" || \
-           [ "$BUILD_ARCH" = "armhf" ] && echo "armhf" || \
-           echo "x86_64") && \
-    wget -qO /usr/local/bin/ttyd \
-      "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${ARCH}" && \
-    chmod +x /usr/local/bin/ttyd
-
 # Install Claude Code and Google Workspace CLI via npm
 RUN npm install -g \
     @anthropic-ai/claude-code \
@@ -51,8 +41,5 @@ RUN npm install -g \
 COPY run.sh /run.sh
 COPY sync.sh /sync.sh
 RUN chmod +x /run.sh /sync.sh
-
-# ttyd listens on this port (must match ingress_port in config.yaml)
-EXPOSE 8099
 
 CMD ["/run.sh"]

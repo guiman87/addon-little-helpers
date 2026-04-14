@@ -5,6 +5,11 @@ export HOME=/root
 
 source /usr/lib/bashio/bashio.sh
 
+# Trap any error and log the line number so we know exactly what failed
+trap 'bashio::log.fatal "run.sh: unexpected error at line ${LINENO} (exit code $?)"' ERR
+
+bashio::log.info "run.sh starting..."
+
 # ── Read addon options ────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY=$(bashio::config 'anthropic_api_key')
 GITHUB_TOKEN=$(bashio::config 'github_token')
@@ -19,8 +24,9 @@ VAULT_DIR="/share/little-helpers"
 
 # ── Persist Claude config across restarts ─────────────────────────────────────
 # /root/.claude/ and /root/.claude.json are both wiped on container restart.
-# Symlink both to /config/ so first-run setup, MCP credentials, and settings
+# Symlink both to /share/ so first-run setup, MCP credentials, and settings
 # survive reboots.
+bashio::log.info "Setting up persistent Claude config at /share/claude-config..."
 mkdir -p /share/claude-config
 
 # Persist the .claude/ directory
@@ -30,7 +36,7 @@ ln -sfn /share/claude-config /root/.claude
 CLAUDE_JSON_PERSIST="/share/claude-config/.claude.json"
 if [ ! -s "${CLAUDE_JSON_PERSIST}" ]; then
     # No persisted config yet — check if a backup was left from a previous run
-    latest_backup=$(ls -t /share/claude-config/backups/.claude.json.backup.* 2>/dev/null | head -1)
+    latest_backup=$(ls -t /share/claude-config/backups/.claude.json.backup.* 2>/dev/null | head -1 || true)
     if [ -n "${latest_backup}" ]; then
         bashio::log.info "Restoring .claude.json from backup: ${latest_backup}"
         cp "${latest_backup}" "${CLAUDE_JSON_PERSIST}"

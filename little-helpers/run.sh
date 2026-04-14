@@ -18,6 +18,7 @@ GWS_SECRET=$(bashio::config 'gws_client_secret_json' || true)
 NOTIFICATION_SERVICE=$(bashio::config 'notification_service' || true)
 NOTIFICATION_SERVICE="${NOTIFICATION_SERVICE:-notify}"
 CLAUDE_AUTH_JSON=$(bashio::config 'claude_auth_json' || true)
+CLAUDE_CREDENTIALS_JSON=$(bashio::config 'claude_credentials_json' || true)
 
 VAULT_DIR="/config/little-helpers"
 
@@ -51,6 +52,17 @@ if ! bashio::var.is_empty "${CLAUDE_AUTH_JSON}"; then
     bashio::log.info "Writing claude.ai auth credentials..."
     printf '%s\n' "${CLAUDE_AUTH_JSON}" > "${CLAUDE_JSON_PERSIST}"
     chmod 600 "${CLAUDE_JSON_PERSIST}"
+fi
+
+# ── Inject claude.ai OAuth tokens if provided ────────────────────────────────
+# ~/.claude/.credentials.json holds the OAuth access/refresh tokens that
+# remote-control requires. Without this, `claude remote-control` fails with
+# "You must be logged in".
+CLAUDE_CREDENTIALS_PERSIST="/config/claude-config/.credentials.json"
+if ! bashio::var.is_empty "${CLAUDE_CREDENTIALS_JSON}"; then
+    bashio::log.info "Writing claude.ai OAuth credentials..."
+    printf '%s\n' "${CLAUDE_CREDENTIALS_JSON}" > "${CLAUDE_CREDENTIALS_PERSIST}"
+    chmod 600 "${CLAUDE_CREDENTIALS_PERSIST}"
 fi
 
 # ── Validate required secrets ─────────────────────────────────────────────────

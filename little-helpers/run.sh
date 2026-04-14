@@ -17,6 +17,12 @@ GWS_SECRET=$(bashio::config 'gws_client_secret_json')
 
 VAULT_DIR="/config/little-helpers"
 
+# ── Persist Claude config across restarts ─────────────────────────────────────
+# /root/.claude/ would be wiped on container restart; symlink it to /config/
+# so first-run setup, MCP credentials, and settings survive reboots.
+mkdir -p /config/claude-config
+ln -sfn /config/claude-config /root/.claude
+
 # ── Validate required secrets ─────────────────────────────────────────────────
 if bashio::var.is_empty "${ANTHROPIC_API_KEY}"; then
     bashio::log.fatal "anthropic_api_key is required. Set it in the addon Configuration tab."

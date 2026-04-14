@@ -116,4 +116,4 @@ exec ttyd \
     --port 7681 \
     --base-path "${INGRESS_PATH:-/}" \
     --writable \
-    tmux new-session -A -s main
+    tmux new-session -A -s main -c "${VAULT_DIR}"

@@ -17,6 +17,7 @@ RUN apk add --no-cache \
     openssh-client \
     python3 \
     tar \
+    tmux \
     wget
 
 # Install ttyd for web terminal (static binary — not in Alpine apk repos)

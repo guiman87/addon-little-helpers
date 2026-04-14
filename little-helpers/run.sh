@@ -109,10 +109,11 @@ cd "${VAULT_DIR}"
 
 bashio::log.info "Starting web terminal (ttyd) on port 7681..."
 
-# ttyd inherits the exported env vars above, so every bash session it spawns
-# will have ANTHROPIC_API_KEY, GWS_BASE, etc. already set.
+# ttyd attaches to (or creates) a persistent tmux session named 'main'.
+# Closing the browser tab does not kill the session — Claude keeps running.
+# Reopening the terminal reattaches to the same session.
 exec ttyd \
     --port 7681 \
     --base-path "${INGRESS_PATH:-/}" \
     --writable \
-    bash
+    tmux new-session -A -s main

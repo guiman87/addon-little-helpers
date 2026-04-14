@@ -5,20 +5,16 @@ export HOME=/root
 
 source /usr/lib/bashio/bashio.sh
 
-# Trap any error and log the line number so we know exactly what failed
-trap 'bashio::log.fatal "run.sh: unexpected error at line ${LINENO} (exit code $?)"' ERR
-
-bashio::log.info "run.sh starting..."
-
 # ── Read addon options ────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY=$(bashio::config 'anthropic_api_key')
-GITHUB_TOKEN=$(bashio::config 'github_token')
-JIRA_EMAIL=$(bashio::config 'jira_email')
-JIRA_API_TOKEN=$(bashio::config 'jira_api_token')
-VAULT_REPO=$(bashio::config 'vault_repo')
-VAULT_BRANCH=$(bashio::config 'vault_branch')
-SYNC_INTERVAL=$(bashio::config 'sync_interval_minutes')
-GWS_SECRET=$(bashio::config 'gws_client_secret_json')
+# Use || true for optional fields — bashio::config exits 1 for empty values
+ANTHROPIC_API_KEY=$(bashio::config 'anthropic_api_key' || true)
+GITHUB_TOKEN=$(bashio::config 'github_token' || true)
+JIRA_EMAIL=$(bashio::config 'jira_email' || true)
+JIRA_API_TOKEN=$(bashio::config 'jira_api_token' || true)
+VAULT_REPO=$(bashio::config 'vault_repo' || true)
+VAULT_BRANCH=$(bashio::config 'vault_branch' || true)
+SYNC_INTERVAL=$(bashio::config 'sync_interval_minutes' || true)
+GWS_SECRET=$(bashio::config 'gws_client_secret_json' || true)
 
 VAULT_DIR="/config/little-helpers"
 
@@ -26,7 +22,6 @@ VAULT_DIR="/config/little-helpers"
 # /root/.claude/ and /root/.claude.json are both wiped on container restart.
 # Symlink both to /config/ so first-run setup, MCP credentials, and settings
 # survive reboots.
-bashio::log.info "Setting up persistent Claude config at /config/claude-config..."
 mkdir -p /config/claude-config
 
 # Persist the .claude/ directory

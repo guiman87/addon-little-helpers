@@ -1,5 +1,5 @@
 name: "Little Helpers"
-version: "1.0.16"
+version: "1.0.18"
 slug: "little-helpers"
 description: "Personal AI assistant for Guille's life wiki — daily briefings, knowledge base, integrations"
 init: false
@@ -24,7 +24,6 @@ options:
   sync_interval_minutes: 15
   gws_client_secret_json: ""
   notification_service: "notify"
-  claude_auth_json: ""
 schema:
   anthropic_api_key: password
   github_token: password
@@ -35,4 +34,3 @@ schema:
   sync_interval_minutes: int
   gws_client_secret_json: password
   notification_service: str
-  claude_auth_json: password

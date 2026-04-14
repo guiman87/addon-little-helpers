@@ -17,6 +17,7 @@ SYNC_INTERVAL=$(bashio::config 'sync_interval_minutes' || true)
 GWS_SECRET=$(bashio::config 'gws_client_secret_json' || true)
 NOTIFICATION_SERVICE=$(bashio::config 'notification_service' || true)
 NOTIFICATION_SERVICE="${NOTIFICATION_SERVICE:-notify}"
+CLAUDE_AUTH_JSON=$(bashio::config 'claude_auth_json' || true)
 
 VAULT_DIR="/config/little-helpers"
 
@@ -42,6 +43,15 @@ if [ ! -s "${CLAUDE_JSON_PERSIST}" ]; then
     fi
 fi
 ln -sfn "${CLAUDE_JSON_PERSIST}" /root/.claude.json
+
+# ── Inject claude.ai auth credentials if provided ────────────────────────────
+# Writes the .claude.json from addon config on every start so the session
+# stays fresh. Only overwrites if the config field is non-empty.
+if ! bashio::var.is_empty "${CLAUDE_AUTH_JSON}"; then
+    bashio::log.info "Writing claude.ai auth credentials..."
+    printf '%s\n' "${CLAUDE_AUTH_JSON}" > "${CLAUDE_JSON_PERSIST}"
+    chmod 600 "${CLAUDE_JSON_PERSIST}"
+fi
 
 # ── Validate required secrets ─────────────────────────────────────────────────
 if bashio::var.is_empty "${ANTHROPIC_API_KEY}"; then

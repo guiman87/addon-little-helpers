@@ -1,6 +1,6 @@
 name: "Little Helpers"
 version: "1.0.0"
-slug: "claude-terminal"
+slug: "little-helpers"
 description: "Personal AI assistant for Guille's life wiki — daily briefings, knowledge base, integrations"
 init: false
 arch:

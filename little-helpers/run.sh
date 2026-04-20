@@ -101,6 +101,26 @@ export GWS_BASE="${VAULT_DIR}/.gws"
 
 cd "${VAULT_DIR}"
 
+# ── Shell welcome banner ──────────────────────────────────────────────────────
+cat > /root/.bashrc <<'BASHRC_EOF'
+if [ "${SHLVL:-1}" -le 1 ]; then
+  cat <<'BANNER'
+
+┌─────────────────────────────────────────────────┐
+│           Little Helpers  ·  Terminal            │
+├─────────────────────────────────────────────────┤
+│  claude         →  start Claude Code            │
+│  rz             →  upload a file from device    │
+│  swipe ↑        →  scroll back through output   │
+│  scroll button  →  same, from the toolbar       │
+│  q / Esc        →  exit scroll mode             │
+│  close tab      →  session keeps running        │
+└─────────────────────────────────────────────────┘
+
+BANNER
+fi
+BASHRC_EOF
+
 # ── tmux config for mobile-friendly status + scrollback ──────────────────────
 # Mouse off — tmux-mouse steals touch events and breaks browser swipe-scroll.
 cat > /root/.tmux.conf <<'TMUX_EOF'

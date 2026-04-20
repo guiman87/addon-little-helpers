@@ -135,4 +135,5 @@ exec ttyd \
     -t cursorStyle=bar \
     -t scrollback=10000 \
     -t 'theme={"background":"#1e1e1e","foreground":"#e6e6e6","cursor":"#ff9900"}' \
+    -t enableZmodem=true \
     tmux -u new-session -A -s main -c "${VAULT_DIR}"

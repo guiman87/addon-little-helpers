@@ -12,6 +12,7 @@ RUN apk add --no-cache \
     curl \
     git \
     jq \
+    lrzsz \
     nodejs \
     npm \
     openssh-client \

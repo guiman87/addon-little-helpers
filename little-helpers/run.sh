@@ -135,7 +135,6 @@ set -g window-status-current-style 'bg=#444444,fg=#ffffff,bold'
 set -g window-status-style 'fg=#888888'
 # Inject /etc/motd directly into the pane tty on every browser tab open/reattach.
 # #{pane_tty} is expanded by tmux before the shell runs it.
-set-hook -g client-attached "run-shell 'sleep 0.2; cat /etc/motd > #{pane_tty}'"
 TMUX_EOF
 
 bashio::log.info "Starting web terminal (ttyd) on port 7681..."

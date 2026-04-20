@@ -20,14 +20,24 @@ RUN apk add --no-cache \
     tmux \
     wget
 
-# lrzsz (rz/sz for Zmodem uploads) lives in Alpine community, not main.
-# Detect the running Alpine version; fall back to edge/community if needed.
+# lrzsz (rz/sz for Zmodem uploads) — try community repo first, compile from
+# source as a guaranteed fallback so rz always works.
 RUN ALPINE_VER=$(cat /etc/alpine-release 2>/dev/null | cut -d. -f1,2) && \
     apk add --no-cache lrzsz \
         --repository "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VER}/community/" 2>/dev/null || \
     apk add --no-cache lrzsz \
         --repository "https://dl-cdn.alpinelinux.org/alpine/edge/community/" 2>/dev/null || \
-    echo "WARNING: lrzsz unavailable — rz/sz will not work on this build"
+    ( \
+        apk add --no-cache --virtual .lrzsz-build build-base && \
+        wget -qO /tmp/lrzsz.tar.gz \
+            "https://ohse.de/uwe/releases/lrzsz-0.12.20.tar.gz" && \
+        tar xzf /tmp/lrzsz.tar.gz -C /tmp && \
+        cd /tmp/lrzsz-0.12.20 && ./configure --quiet && make -s && \
+        install -m755 src/lrz /usr/local/bin/rz && \
+        install -m755 src/lsz /usr/local/bin/sz && \
+        cd / && rm -rf /tmp/lrzsz* && \
+        apk del .lrzsz-build \
+    )
 
 # Install ttyd for web terminal (static binary — not in Alpine apk repos)
 RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "aarch64" || \

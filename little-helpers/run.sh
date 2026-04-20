@@ -102,11 +102,11 @@ cd "${VAULT_DIR}"
 cat > /root/.tmux.conf <<'TMUX_EOF'
 set -g history-limit 50000
 set -g mouse off
-set -g status-style 'bg=#1e1e1e fg=#aaaaaa'
+set -g status-style 'bg=#1e1e1e,fg=#aaaaaa'
 set -g status-left ''
 set -g status-right '%H:%M '
 set -g status-right-length 20
-set -g window-status-current-style 'bg=#444 fg=#ffffff bold'
+set -g window-status-current-style 'bg=#444444,fg=#ffffff,bold'
 set -g window-status-style 'fg=#888888'
 TMUX_EOF
 

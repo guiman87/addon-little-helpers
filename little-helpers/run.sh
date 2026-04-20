@@ -114,7 +114,7 @@ cat > /etc/motd <<'MOTD_EOF'
 │           Little Helpers  ·  Terminal            │
 ├─────────────────────────────────────────────────┤
 │  claude         →  start Claude Code            │
-│  rz             →  upload a file from device    │
+│  file button    →  upload a file from device    │
 │  swipe ↑        →  scroll back through output   │
 │  scroll button  →  same, from toolbar           │
 │  q / Esc        →  exit scroll mode             │

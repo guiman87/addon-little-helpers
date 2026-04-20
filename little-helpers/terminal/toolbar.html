@@ -54,6 +54,56 @@
     capturedWs.send(payload);
   }
 
+  // Paste large payloads in chunks so tmux's input buffer doesn't drop bytes.
+  function sendChunked(text, chunkSize, delayMs, onDone) {
+    var i = 0;
+    function next() {
+      if (i >= text.length) { if (onDone) onDone(); return; }
+      var end = Math.min(i + chunkSize, text.length);
+      send(text.slice(i, end));
+      i = end;
+      setTimeout(next, delayMs);
+    }
+    next();
+  }
+
+  function shellSingleQuote(s) {
+    return "'" + String(s).replace(/'/g, "'\\''") + "'";
+  }
+
+  // Zmodem is unreliable through tmux (not 8-bit clean in UTF-8 mode). Instead,
+  // base64-encode the file in the browser and paste a heredoc into the shell.
+  // Works through any terminal multiplexer, no rz/sz needed.
+  function handleUpload(file, btn) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var result = reader.result;
+      var b64 = result.substring(result.indexOf(',') + 1);
+      var wrapped = b64.replace(/(.{76})/g, '$1\n');
+      if (wrapped.charAt(wrapped.length - 1) !== '\n') wrapped += '\n';
+      var term = 'UPLOAD_END_' + Math.random().toString(36).slice(2, 10).toUpperCase();
+      var qname = shellSingleQuote(file.name);
+      var origLabel = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'sending…';
+      var cmd =
+        "cat > /tmp/_u.b64 <<'" + term + "'\n" +
+        wrapped +
+        term + "\n" +
+        "base64 -d /tmp/_u.b64 > " + qname +
+        " && rm /tmp/_u.b64 && echo \"uploaded $(wc -c < " + qname + ") bytes to " + qname + "\"\n";
+      sendChunked(cmd, 4096, 10, function () {
+        btn.disabled = false;
+        btn.textContent = origLabel;
+      });
+    };
+    reader.onerror = function () {
+      btn.disabled = false;
+      alert('upload failed: ' + reader.error);
+    };
+    reader.readAsDataURL(file);
+  }
+
   var keys = [
     ["Esc", "\x1b"],
     ["Tab", "\t"],
@@ -78,6 +128,28 @@
     if (document.getElementById("mobile-toolbar")) return;
     var bar = document.createElement("div");
     bar.id = "mobile-toolbar";
+
+    // Upload button — opens a hidden <input type=file> and pastes a base64
+    // heredoc into the shell. The file lands in the current working directory.
+    var upBtn = document.createElement("button");
+    upBtn.type = "button";
+    upBtn.textContent = "file";
+    upBtn.className = "upload";
+    var fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.style.display = "none";
+    fileInput.addEventListener("change", function () {
+      if (fileInput.files && fileInput.files[0]) {
+        handleUpload(fileInput.files[0], upBtn);
+        fileInput.value = "";
+      }
+    });
+    upBtn.addEventListener("click", function () {
+      if (!upBtn.disabled) fileInput.click();
+    });
+    bar.appendChild(upBtn);
+    bar.appendChild(fileInput);
+
     keys.forEach(function (k) {
       var b = document.createElement("button");
       b.type = "button";

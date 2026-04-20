@@ -88,6 +88,10 @@ bashio::log.info "Background sync every ${SYNC_INTERVAL} min (${SYNC_INTERVAL_SE
 /sync.sh "${VAULT_DIR}" "${VAULT_BRANCH}" "${SYNC_INTERVAL_SECS}" &
 
 # ── Export env for interactive terminal use ───────────────────────────────────
+# UTF-8 locale — without this Alpine/musl defaults to POSIX and Claude's
+# box-drawing characters render as garbage.
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
 export ANTHROPIC_API_KEY
 export GITHUB_TOKEN
 export GH_TOKEN="${GITHUB_TOKEN}"
@@ -131,4 +135,4 @@ exec ttyd \
     -t cursorStyle=bar \
     -t scrollback=10000 \
     -t 'theme={"background":"#1e1e1e","foreground":"#e6e6e6","cursor":"#ff9900"}' \
-    tmux new-session -A -s main -c "${VAULT_DIR}"
+    tmux -u new-session -A -s main -c "${VAULT_DIR}"

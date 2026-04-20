@@ -102,10 +102,11 @@ export GWS_BASE="${VAULT_DIR}/.gws"
 
 cd "${VAULT_DIR}"
 
-# ── Shell welcome banner ──────────────────────────────────────────────────────
-cat > /root/.bashrc <<'BASHRC_EOF'
-if [ "${SHLVL:-1}" -le 1 ]; then
-  cat <<'BANNER'
+# ── Welcome banner ───────────────────────────────────────────────────────────
+# Written to /etc/motd and injected into the pane on every client attach via
+# the tmux client-attached hook, so it appears whether the session is new or
+# the user is just reopening the browser tab.
+cat > /etc/motd <<'MOTD_EOF'
 
 ┌─────────────────────────────────────────────────┐
 │           Little Helpers  ·  Terminal            │
@@ -113,21 +114,17 @@ if [ "${SHLVL:-1}" -le 1 ]; then
 │  claude         →  start Claude Code            │
 │  rz             →  upload a file from device    │
 │  swipe ↑        →  scroll back through output   │
-│  scroll button  →  same, from the toolbar       │
+│  scroll button  →  same, from toolbar           │
 │  q / Esc        →  exit scroll mode             │
 │  close tab      →  session keeps running        │
 └─────────────────────────────────────────────────┘
 
-BANNER
-fi
-BASHRC_EOF
+MOTD_EOF
 
 # ── tmux config for mobile-friendly status + scrollback ──────────────────────
 # Mouse off — tmux-mouse steals touch events and breaks browser swipe-scroll.
 cat > /root/.tmux.conf <<'TMUX_EOF'
 set -g history-limit 50000
-# Mouse on: swipe in the terminal auto-enters copy-mode so you can scroll back.
-# Toolbar buttons bypass xterm entirely (direct WebSocket) so they're unaffected.
 set -g mouse on
 setw -g mode-keys vi
 set -g status-style 'bg=#1e1e1e,fg=#aaaaaa'
@@ -136,6 +133,9 @@ set -g status-right '%H:%M '
 set -g status-right-length 20
 set -g window-status-current-style 'bg=#444444,fg=#ffffff,bold'
 set -g window-status-style 'fg=#888888'
+# Inject /etc/motd directly into the pane tty on every browser tab open/reattach.
+# #{pane_tty} is expanded by tmux before the shell runs it.
+set-hook -g client-attached "run-shell 'sleep 0.2; cat /etc/motd > #{pane_tty}'"
 TMUX_EOF
 
 bashio::log.info "Starting web terminal (ttyd) on port 7681..."
@@ -160,4 +160,4 @@ exec ttyd \
     -t scrollback=10000 \
     -t 'theme={"background":"#1e1e1e","foreground":"#e6e6e6","cursor":"#ff9900"}' \
     -t enableZmodem=true \
-    tmux -u new-session -A -s main -c "${VAULT_DIR}"
+    tmux -u new-session -A -s main -c "${VAULT_DIR}" /bin/bash

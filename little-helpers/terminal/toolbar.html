@@ -108,27 +108,81 @@
   // Zmodem is unreliable through tmux (not 8-bit clean in UTF-8 mode). Instead,
   // base64-encode the file in the browser and paste a heredoc into the shell.
   // Works through any terminal multiplexer, no rz/sz needed.
-  function uploadOne(file, onDone, onError) {
+  //
+  // readAsDataURL on the whole file fails for big media on mobile: iOS videos
+  // from the Photos picker can resolve with empty bytes (lazy transcode), and
+  // >~50 MB files blow the JS string / memory budget silently. Slice the file
+  // into small pieces, read each as ArrayBuffer, base64 it, and append to a
+  // temp buffer on disk, then decode once at the end.
+
+  function bytesToBase64(bytes) {
+    var chunkSize = 0x8000; // 32 KB — avoids stack overflow from .apply()
+    var binary = '';
+    for (var i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+  }
+
+  function readSliceAsBytes(file, start, end, onDone, onError) {
     var reader = new FileReader();
-    reader.onload = function () {
-      var result = reader.result;
-      var b64 = result.substring(result.indexOf(',') + 1);
-      var wrapped = b64.replace(/(.{76})/g, '$1\n');
-      if (wrapped.charAt(wrapped.length - 1) !== '\n') wrapped += '\n';
-      var term = 'UPLOAD_END_' + Math.random().toString(36).slice(2, 10).toUpperCase();
-      var qname = shellSingleQuote(file.name);
-      var cmd =
-        "cat > /tmp/_u.b64 <<'" + term + "'\n" +
-        wrapped +
-        term + "\n" +
-        "base64 -d /tmp/_u.b64 > " + qname +
-        " && rm /tmp/_u.b64 && echo \"uploaded $(wc -c < " + qname + ") bytes to " + qname + "\"\n";
-      sendChunked(cmd, 4096, 10, onDone, function () {
-        onError('terminal disconnected — reopen the addon and try again');
-      });
-    };
+    reader.onload = function () { onDone(new Uint8Array(reader.result)); };
     reader.onerror = function () { onError(reader.error); };
-    reader.readAsDataURL(file);
+    reader.readAsArrayBuffer(file.slice(start, end));
+  }
+
+  function uploadOne(file, onProgress, onDone, onError) {
+    if (!file.size) {
+      onError('file is empty or not yet available (on iOS, Photos videos may need a moment to download — try again)');
+      return;
+    }
+
+    var SLICE = 3 * 1024 * 1024; // 3 MB per read — ~4 MB base64, safe in memory
+    var tmpPath = '/tmp/_u.' + Math.random().toString(36).slice(2, 10) + '.b64';
+    var qtmp = shellSingleQuote(tmpPath);
+    var qname = shellSingleQuote(file.name);
+    var offset = 0;
+
+    var failed = false;
+    function fail(msg) {
+      if (failed) return;
+      failed = true;
+      // Best-effort cleanup of the temp buffer
+      send("rm -f " + qtmp + "\n");
+      onError(msg);
+    }
+    function disc() { fail('terminal disconnected — reopen the addon and try again'); }
+
+    // Truncate the temp buffer, then append each chunk, then decode and clean.
+    sendChunked(": > " + qtmp + "\n", 4096, 10, function () {
+      nextChunk();
+    }, disc);
+
+    function nextChunk() {
+      if (failed) return;
+      if (offset >= file.size) {
+        var finalCmd =
+          "base64 -d " + qtmp + " > " + qname +
+          " && rm -f " + qtmp +
+          " && echo \"uploaded $(wc -c < " + qname + ") bytes to " + qname + "\"\n";
+        sendChunked(finalCmd, 4096, 10, onDone, disc);
+        return;
+      }
+      var end = Math.min(offset + SLICE, file.size);
+      readSliceAsBytes(file, offset, end, function (bytes) {
+        if (!bytes.length) { fail('read 0 bytes from file — it may not be available yet'); return; }
+        var b64 = bytesToBase64(bytes);
+        var wrapped = b64.replace(/(.{76})/g, '$1\n');
+        if (wrapped.charAt(wrapped.length - 1) !== '\n') wrapped += '\n';
+        var term = 'UPLOAD_END_' + Math.random().toString(36).slice(2, 10).toUpperCase();
+        var cmd = "cat >> " + qtmp + " <<'" + term + "'\n" + wrapped + term + "\n";
+        sendChunked(cmd, 4096, 10, function () {
+          offset = end;
+          if (onProgress) onProgress(offset, file.size);
+          setTimeout(nextChunk, 50);
+        }, disc);
+      }, function (err) { fail('read failed: ' + err); });
+    }
   }
 
   function handleUpload(files, btn) {
@@ -137,14 +191,18 @@
     var origLabel = btn.textContent;
     btn.disabled = true;
     var idx = 0;
+    function prefix() { return list.length > 1 ? (idx + 1) + '/' + list.length + ' ' : ''; }
     function next() {
       if (idx >= list.length) {
         btn.textContent = origLabel;
         btn.disabled = false;
         return;
       }
-      btn.textContent = list.length > 1 ? (idx + 1) + '/' + list.length : 'sending…';
-      uploadOne(list[idx], function () {
+      btn.textContent = prefix() + 'sending…';
+      uploadOne(list[idx], function (sent, total) {
+        var pct = Math.min(99, Math.floor(sent / total * 100));
+        btn.textContent = prefix() + pct + '%';
+      }, function () {
         idx++;
         // brief gap so the prior command's echo lands before the next paste
         setTimeout(next, 400);

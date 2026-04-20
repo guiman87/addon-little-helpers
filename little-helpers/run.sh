@@ -97,13 +97,38 @@ export GWS_BASE="${VAULT_DIR}/.gws"
 
 cd "${VAULT_DIR}"
 
+# ── tmux config for mobile-friendly status + scrollback ──────────────────────
+# Mouse off — tmux-mouse steals touch events and breaks browser swipe-scroll.
+cat > /root/.tmux.conf <<'TMUX_EOF'
+set -g history-limit 50000
+set -g mouse off
+set -g status-style 'bg=#1e1e1e fg=#aaaaaa'
+set -g status-left ''
+set -g status-right '%H:%M '
+set -g status-right-length 20
+set -g window-status-current-style 'bg=#444 fg=#ffffff bold'
+set -g window-status-style 'fg=#888888'
+TMUX_EOF
+
 bashio::log.info "Starting web terminal (ttyd) on port 7681..."
 
 # ttyd attaches to (or creates) a persistent tmux session named 'main'.
 # Closing the browser tab does not kill the session — Claude keeps running.
 # Reopening the terminal reattaches to the same session.
+#
+# --index serves our mobile-enhanced HTML (built into the image) at /.
+# -t options tune xterm.js for readability on phones (font size, theme, etc.).
 exec ttyd \
     --port 7681 \
     --base-path "${INGRESS_PATH:-/}" \
     --writable \
+    --index /terminal/mobile-index.html \
+    -t fontSize=15 \
+    -t 'fontFamily=Menlo, "DejaVu Sans Mono", monospace' \
+    -t lineHeight=1.2 \
+    -t disableLeaveAlert=true \
+    -t disableResizeOverlay=true \
+    -t cursorStyle=bar \
+    -t scrollback=10000 \
+    -t 'theme={"background":"#1e1e1e","foreground":"#e6e6e6","cursor":"#ff9900"}' \
     tmux new-session -A -s main -c "${VAULT_DIR}"

@@ -47,6 +47,31 @@ RUN npm install -g \
     @anthropic-ai/claude-code \
     @googleworkspace/cli
 
+# Build mobile-friendly index.html:
+# Boot ttyd briefly on a temp port, fetch its default index.html (so asset
+# references with webpack-generated hashes are preserved), inject our
+# mobile toolbar fragment, and save to /terminal/mobile-index.html.
+COPY terminal/ /terminal/
+RUN set -e; \
+    TMP_PORT=17681; \
+    ttyd -p $TMP_PORT sleep 60 > /tmp/ttyd-build.log 2>&1 & \
+    TTYD_PID=$!; \
+    for i in 1 2 3 4 5 6 7 8 9 10; do \
+        sleep 0.5; \
+        if curl -sf "http://127.0.0.1:$TMP_PORT/" -o /tmp/ttyd-default.html; then break; fi; \
+    done; \
+    kill $TTYD_PID 2>/dev/null || true; \
+    wait $TTYD_PID 2>/dev/null || true; \
+    test -s /tmp/ttyd-default.html || (echo "Failed to fetch ttyd default index"; cat /tmp/ttyd-build.log; exit 1); \
+    python3 -c "\
+html = open('/tmp/ttyd-default.html').read();\
+tb = open('/terminal/toolbar.html').read();\
+assert '<body>' in html, 'no <body> tag in ttyd index';\
+out = html.replace('<body>', '<body>\n' + tb, 1);\
+open('/terminal/mobile-index.html', 'w').write(out)"; \
+    test -s /terminal/mobile-index.html; \
+    rm -f /tmp/ttyd-default.html /tmp/ttyd-build.log
+
 # Copy addon scripts
 COPY run.sh /run.sh
 COPY sync.sh /sync.sh

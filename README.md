@@ -12,6 +12,7 @@ life wiki vault. Access it from any device via the Home Assistant UI sidebar.
 
 **Features:**
 - Full Claude Code REPL in the browser (works on mobile Safari/Chrome)
+- Mobile-friendly terminal: on-screen key bar (Esc, Tab, Ctrl-C/D/L, C-b, `|`, `/`, `~`, `-`, arrows) appears automatically on touch devices; tuned xterm.js font/theme; tmux mouse-off so browser swipe-scroll works
 - Vault auto-cloned from GitHub on startup
 - Background git sync every N minutes — changes pushed back automatically
 - Integrations: Jira MCP, GitHub CLI (`gh`), Google Workspace CLI (`gws`)

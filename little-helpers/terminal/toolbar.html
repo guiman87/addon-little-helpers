@@ -1,0 +1,104 @@
+<style>
+#mobile-toolbar { display: none; }
+@media (pointer: coarse), (max-width: 800px) {
+  #mobile-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #1e1e1e;
+    padding: 4px;
+    gap: 4px;
+    z-index: 9999;
+    justify-content: center;
+    border-top: 1px solid #444;
+    -webkit-user-select: none;
+    user-select: none;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom));
+  }
+  #mobile-toolbar button {
+    background: #2d2d2d;
+    color: #e6e6e6;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: Menlo, "DejaVu Sans Mono", monospace;
+    font-size: 14px;
+    min-width: 44px;
+    min-height: 36px;
+    touch-action: manipulation;
+  }
+  #mobile-toolbar button:active { background: #555; }
+  #terminal-container { padding-bottom: 110px !important; }
+}
+</style>
+<script>
+(function () {
+  var OrigWS = window.WebSocket;
+  var capturedWs = null;
+  window.WebSocket = new Proxy(OrigWS, {
+    construct: function (target, args) {
+      capturedWs = new target(args[0], args[1]);
+      return capturedWs;
+    }
+  });
+
+  function send(seq) {
+    if (!capturedWs || capturedWs.readyState !== 1) return;
+    var bytes = new TextEncoder().encode(seq);
+    var payload = new Uint8Array(bytes.length + 1);
+    payload[0] = 0x30; // '0' — ttyd INPUT opcode
+    payload.set(bytes, 1);
+    capturedWs.send(payload);
+  }
+
+  var keys = [
+    ["Esc", "\x1b"],
+    ["Tab", "\t"],
+    ["^C", "\x03"],
+    ["^D", "\x04"],
+    ["^L", "\x0c"],
+    ["C-b", "\x02"],
+    ["|", "|"],
+    ["/", "/"],
+    ["~", "~"],
+    ["-", "-"],
+    ["\u2191", "\x1b[A"],
+    ["\u2193", "\x1b[B"],
+    ["\u2190", "\x1b[D"],
+    ["\u2192", "\x1b[C"]
+  ];
+
+  function build() {
+    if (document.getElementById("mobile-toolbar")) return;
+    var bar = document.createElement("div");
+    bar.id = "mobile-toolbar";
+    keys.forEach(function (k) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = k[0];
+      var seq = k[1];
+      var fired = false;
+      b.addEventListener("touchstart", function (e) {
+        e.preventDefault();
+        fired = true;
+        send(seq);
+      }, { passive: false });
+      b.addEventListener("click", function () {
+        if (fired) { fired = false; return; }
+        send(seq);
+      });
+      bar.appendChild(b);
+    });
+    document.body.appendChild(bar);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", build);
+  } else {
+    build();
+  }
+})();
+</script>

@@ -58,23 +58,45 @@
   });
 
   function send(seq) {
-    if (!capturedWs || capturedWs.readyState !== 1) return;
+    if (!capturedWs || capturedWs.readyState !== 1) return false;
     var bytes = new TextEncoder().encode(seq);
     var payload = new Uint8Array(bytes.length + 1);
     payload[0] = 0x30; // '0' — ttyd INPUT opcode
     payload.set(bytes, 1);
     capturedWs.send(payload);
+    return true;
+  }
+
+  // The HA mobile app suspends the web view when the native file picker is
+  // open. ttyd's WebSocket times out and closes. When the picker closes HA
+  // reconnects ttyd, which creates a new WebSocket — our Proxy catches it and
+  // updates capturedWs. But that reconnect isn't instant. Any send attempted
+  // mid-reconnect is silently dropped, which is why multi-file uploads fail
+  // after the first pick. This helper retries until the new socket is open,
+  // then sends. 30 s timeout guards against a truly dead connection.
+  function sendWhenReady(seq, onDone, onFail) {
+    var deadline = Date.now() + 30000;
+    function attempt() {
+      if (send(seq)) { if (onDone) onDone(); return; }
+      if (Date.now() > deadline) { if (onFail) onFail(); return; }
+      setTimeout(attempt, 200);
+    }
+    attempt();
   }
 
   // Paste large payloads in chunks so tmux's input buffer doesn't drop bytes.
-  function sendChunked(text, chunkSize, delayMs, onDone) {
+  // Every chunk waits for the WS to be connected, so a reconnect mid-paste
+  // pauses the upload instead of losing data.
+  function sendChunked(text, chunkSize, delayMs, onDone, onFail) {
     var i = 0;
     function next() {
       if (i >= text.length) { if (onDone) onDone(); return; }
       var end = Math.min(i + chunkSize, text.length);
-      send(text.slice(i, end));
-      i = end;
-      setTimeout(next, delayMs);
+      var chunk = text.slice(i, end);
+      sendWhenReady(chunk, function () {
+        i = end;
+        setTimeout(next, delayMs);
+      }, onFail);
     }
     next();
   }
@@ -101,7 +123,9 @@
         term + "\n" +
         "base64 -d /tmp/_u.b64 > " + qname +
         " && rm /tmp/_u.b64 && echo \"uploaded $(wc -c < " + qname + ") bytes to " + qname + "\"\n";
-      sendChunked(cmd, 4096, 10, onDone);
+      sendChunked(cmd, 4096, 10, onDone, function () {
+        onError('terminal disconnected — reopen the addon and try again');
+      });
     };
     reader.onerror = function () { onError(reader.error); };
     reader.readAsDataURL(file);

@@ -122,10 +122,12 @@ cat > /etc/motd <<'MOTD_EOF'
 MOTD_EOF
 
 # ── tmux config for mobile-friendly status + scrollback ──────────────────────
-# Mouse off — tmux-mouse steals touch events and breaks browser swipe-scroll.
+# Mouse off: xterm.js handles touch-scroll natively. With mouse on, tmux hijacks
+# touch events and copy-mode never triggers reliably on mobile. Use the toolbar
+# "scroll" button to enter tmux copy-mode for deeper history.
 cat > /root/.tmux.conf <<'TMUX_EOF'
 set -g history-limit 50000
-set -g mouse on
+set -g mouse off
 setw -g mode-keys vi
 set -g status-style 'bg=#1e1e1e,fg=#aaaaaa'
 set -g status-left ''
@@ -159,4 +161,5 @@ exec ttyd \
     -t scrollback=10000 \
     -t 'theme={"background":"#1e1e1e","foreground":"#e6e6e6","cursor":"#ff9900"}' \
     -t enableZmodem=true \
+    -t scrollSensitivity=5 \
     tmux -u new-session -A -s main -c "${VAULT_DIR}" /bin/bash

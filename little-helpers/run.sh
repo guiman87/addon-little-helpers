@@ -92,6 +92,7 @@ bashio::log.info "Background sync every ${SYNC_INTERVAL} min (${SYNC_INTERVAL_SE
 # box-drawing characters render as garbage.
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
+export SHELL=/bin/bash   # tmux inherits this; ensures bash (not ash) runs in the session so .bashrc is sourced
 export ANTHROPIC_API_KEY
 export GITHUB_TOKEN
 export GH_TOKEN="${GITHUB_TOKEN}"

@@ -31,7 +31,19 @@
     touch-action: manipulation;
   }
   #mobile-toolbar button:active { background: #555; }
+  #mobile-toolbar.top {
+    bottom: auto;
+    top: 0;
+    border-top: none;
+    border-bottom: 1px solid #444;
+    padding-bottom: 4px;
+    padding-top: calc(4px + env(safe-area-inset-top));
+  }
   #terminal-container { padding-bottom: 110px !important; }
+  body.toolbar-top #terminal-container {
+    padding-bottom: 0 !important;
+    padding-top: 110px !important;
+  }
 }
 </style>
 <script>
@@ -74,7 +86,7 @@
   // Zmodem is unreliable through tmux (not 8-bit clean in UTF-8 mode). Instead,
   // base64-encode the file in the browser and paste a heredoc into the shell.
   // Works through any terminal multiplexer, no rz/sz needed.
-  function handleUpload(file, btn) {
+  function uploadOne(file, onDone, onError) {
     var reader = new FileReader();
     reader.onload = function () {
       var result = reader.result;
@@ -83,25 +95,42 @@
       if (wrapped.charAt(wrapped.length - 1) !== '\n') wrapped += '\n';
       var term = 'UPLOAD_END_' + Math.random().toString(36).slice(2, 10).toUpperCase();
       var qname = shellSingleQuote(file.name);
-      var origLabel = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'sending…';
       var cmd =
         "cat > /tmp/_u.b64 <<'" + term + "'\n" +
         wrapped +
         term + "\n" +
         "base64 -d /tmp/_u.b64 > " + qname +
         " && rm /tmp/_u.b64 && echo \"uploaded $(wc -c < " + qname + ") bytes to " + qname + "\"\n";
-      sendChunked(cmd, 4096, 10, function () {
-        btn.disabled = false;
-        btn.textContent = origLabel;
-      });
+      sendChunked(cmd, 4096, 10, onDone);
     };
-    reader.onerror = function () {
-      btn.disabled = false;
-      alert('upload failed: ' + reader.error);
-    };
+    reader.onerror = function () { onError(reader.error); };
     reader.readAsDataURL(file);
+  }
+
+  function handleUpload(files, btn) {
+    var list = Array.prototype.slice.call(files);
+    if (!list.length) return;
+    var origLabel = btn.textContent;
+    btn.disabled = true;
+    var idx = 0;
+    function next() {
+      if (idx >= list.length) {
+        btn.textContent = origLabel;
+        btn.disabled = false;
+        return;
+      }
+      btn.textContent = list.length > 1 ? (idx + 1) + '/' + list.length : 'sending…';
+      uploadOne(list[idx], function () {
+        idx++;
+        // brief gap so the prior command's echo lands before the next paste
+        setTimeout(next, 400);
+      }, function (err) {
+        btn.textContent = origLabel;
+        btn.disabled = false;
+        alert('upload failed: ' + err);
+      });
+    }
+    next();
   }
 
   var keys = [
@@ -129,18 +158,27 @@
     var bar = document.createElement("div");
     bar.id = "mobile-toolbar";
 
-    // Upload button — opens a hidden <input type=file> and pastes a base64
-    // heredoc into the shell. The file lands in the current working directory.
+    // Restore saved toolbar position (top/bottom) from a prior session.
+    var savedPos = null;
+    try { savedPos = localStorage.getItem('lh-toolbar-pos'); } catch (e) {}
+    if (savedPos === 'top') {
+      bar.classList.add('top');
+      document.body.classList.add('toolbar-top');
+    }
+
+    // Upload button — opens a hidden <input type=file multiple> and pastes a
+    // base64 heredoc into the shell for each file. Files land in cwd.
     var upBtn = document.createElement("button");
     upBtn.type = "button";
     upBtn.textContent = "file";
     upBtn.className = "upload";
     var fileInput = document.createElement("input");
     fileInput.type = "file";
+    fileInput.multiple = true;
     fileInput.style.display = "none";
     fileInput.addEventListener("change", function () {
-      if (fileInput.files && fileInput.files[0]) {
-        handleUpload(fileInput.files[0], upBtn);
+      if (fileInput.files && fileInput.files.length) {
+        handleUpload(fileInput.files, upBtn);
         fileInput.value = "";
       }
     });
@@ -149,6 +187,18 @@
     });
     bar.appendChild(upBtn);
     bar.appendChild(fileInput);
+
+    // Position-flip button — toggle toolbar between bottom and top.
+    var posBtn = document.createElement("button");
+    posBtn.type = "button";
+    posBtn.textContent = "\u2195"; // ↕
+    posBtn.addEventListener("click", function () {
+      var nowTop = !bar.classList.contains('top');
+      bar.classList.toggle('top', nowTop);
+      document.body.classList.toggle('toolbar-top', nowTop);
+      try { localStorage.setItem('lh-toolbar-pos', nowTop ? 'top' : 'bottom'); } catch (e) {}
+    });
+    bar.appendChild(posBtn);
 
     keys.forEach(function (k) {
       var b = document.createElement("button");

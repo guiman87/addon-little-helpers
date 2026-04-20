@@ -20,18 +20,24 @@ RUN apk add --no-cache \
     tmux \
     wget
 
-# lrzsz (rz/sz for Zmodem file uploads) — compile from source.
-# Alpine community repo availability varies by arch/version; source is reliable.
-RUN apk add --no-cache --virtual .lrzsz-build build-base && \
-    wget -qO /tmp/lrzsz.tar.gz \
-        "https://ohse.de/uwe/releases/lrzsz-0.12.20.tar.gz" && \
-    tar xzf /tmp/lrzsz.tar.gz -C /tmp && \
-    cd /tmp/lrzsz-0.12.20 && \
-    ./configure --quiet && make -s && \
-    install -m755 src/lrz /usr/local/bin/rz && \
-    install -m755 src/lsz /usr/local/bin/sz && \
-    cd / && rm -rf /tmp/lrzsz* && \
-    apk del .lrzsz-build
+# lrzsz (rz/sz for Zmodem file uploads) — build from vendored source tarball.
+# Bundled to eliminate network dependency during image build; build errors are
+# no longer hidden (no --quiet / -s), and a post-build verification step fails
+# the image build loud if rz/sz aren't on PATH at the end.
+COPY vendor/lrzsz-0.12.20.tar.gz /tmp/lrzsz.tar.gz
+RUN set -e; \
+    apk add --no-cache --virtual .lrzsz-build build-base; \
+    tar xzf /tmp/lrzsz.tar.gz -C /tmp; \
+    cd /tmp/lrzsz-0.12.20; \
+    ./configure; \
+    make; \
+    install -m755 src/lrz /usr/local/bin/rz; \
+    install -m755 src/lsz /usr/local/bin/sz; \
+    cd /; rm -rf /tmp/lrzsz*; \
+    apk del .lrzsz-build; \
+    test -x /usr/local/bin/rz || (echo "FATAL: rz missing after build" && exit 1); \
+    test -x /usr/local/bin/sz || (echo "FATAL: sz missing after build" && exit 1); \
+    /usr/local/bin/rz --version 2>&1 | head -1
 
 # Install ttyd for web terminal (static binary — not in Alpine apk repos)
 RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "aarch64" || \

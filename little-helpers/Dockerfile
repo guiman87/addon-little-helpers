@@ -1,4 +1,25 @@
 ARG BUILD_FROM
+
+# ─── lrzsz builder stage ──────────────────────────────────────────────────────
+# The HA base image's build-base can't produce executables (noexec /tmp or
+# incomplete toolchain). Compile lrzsz in a pristine alpine:3.19 instead; the
+# resulting musl binary is ABI-compatible with any Alpine-based HA base.
+# Buildkit builds this stage for the target platform, so the binary matches arch.
+FROM alpine:3.19 AS lrzsz-builder
+COPY vendor/lrzsz-0.12.20.tar.gz /tmp/lrzsz.tar.gz
+RUN set -e; \
+    apk add --no-cache build-base; \
+    tar xzf /tmp/lrzsz.tar.gz -C /tmp; \
+    cd /tmp/lrzsz-0.12.20; \
+    ./configure; \
+    make; \
+    strip src/lrz src/lsz; \
+    mkdir -p /out; \
+    cp src/lrz /out/rz; \
+    cp src/lsz /out/sz; \
+    /out/rz --version 2>&1 | head -1
+
+# ─── Main image ───────────────────────────────────────────────────────────────
 FROM $BUILD_FROM
 
 ARG BUILD_ARCH=amd64
@@ -20,23 +41,11 @@ RUN apk add --no-cache \
     tmux \
     wget
 
-# lrzsz (rz/sz for Zmodem file uploads) — build from vendored source tarball.
-# Bundled to eliminate network dependency during image build; build errors are
-# no longer hidden (no --quiet / -s), and a post-build verification step fails
-# the image build loud if rz/sz aren't on PATH at the end.
-COPY vendor/lrzsz-0.12.20.tar.gz /tmp/lrzsz.tar.gz
-RUN set -e; \
-    apk add --no-cache --virtual .lrzsz-build build-base; \
-    tar xzf /tmp/lrzsz.tar.gz -C /tmp; \
-    cd /tmp/lrzsz-0.12.20; \
-    ./configure; \
-    make; \
-    install -m755 src/lrz /usr/local/bin/rz; \
-    install -m755 src/lsz /usr/local/bin/sz; \
-    cd /; rm -rf /tmp/lrzsz*; \
-    apk del .lrzsz-build; \
-    test -x /usr/local/bin/rz || (echo "FATAL: rz missing after build" && exit 1); \
-    test -x /usr/local/bin/sz || (echo "FATAL: sz missing after build" && exit 1); \
+# Copy rz/sz from the builder stage — no compile toolchain in final image
+COPY --from=lrzsz-builder /out/rz /usr/local/bin/rz
+COPY --from=lrzsz-builder /out/sz /usr/local/bin/sz
+RUN chmod +x /usr/local/bin/rz /usr/local/bin/sz && \
+    test -x /usr/local/bin/rz && \
     /usr/local/bin/rz --version 2>&1 | head -1
 
 # Install ttyd for web terminal (static binary — not in Alpine apk repos)

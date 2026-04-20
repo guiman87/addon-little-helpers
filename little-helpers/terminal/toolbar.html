@@ -48,6 +48,43 @@
 </style>
 <script>
 (function () {
+  // ─── Mobile keyboard hardening ───────────────────────────────────────────
+  // xterm.js reads input through a hidden <textarea class="xterm-helper-textarea">.
+  // On iOS and Android, that textarea inherits autocorrect / autocapitalize /
+  // predictive text by default. The keyboard then fires composition events —
+  // the word only reaches the terminal when you hit space, and Claude Code's
+  // constant input-line redraws during composition produce overwritten or
+  // duplicated text. Killing all text-assist features here gives 1:1 keystroke
+  // delivery, which is what a terminal actually wants.
+  function hardenXtermTextarea() {
+    var tas = document.querySelectorAll('.xterm-helper-textarea');
+    if (!tas.length) return false;
+    for (var i = 0; i < tas.length; i++) {
+      var ta = tas[i];
+      ta.setAttribute('autocorrect', 'off');
+      ta.setAttribute('autocomplete', 'off');
+      ta.setAttribute('autocapitalize', 'none');
+      ta.setAttribute('spellcheck', 'false');
+      ta.setAttribute('inputmode', 'text');
+      // Belt-and-suspenders for older WebKit: these non-standard attrs still
+      // influence the keyboard on some iOS builds.
+      ta.setAttribute('x-autocorrect', 'off');
+      ta.setAttribute('x-autocompletetype', 'off');
+    }
+    return true;
+  }
+  var hardenPoll = setInterval(function () {
+    if (hardenXtermTextarea()) clearInterval(hardenPoll);
+  }, 200);
+  setTimeout(function () { clearInterval(hardenPoll); }, 15000);
+  // iOS can silently re-enable autocorrect when the textarea regains focus —
+  // reapply on every focusin to stay immune.
+  document.addEventListener('focusin', function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains('xterm-helper-textarea')) {
+      hardenXtermTextarea();
+    }
+  }, true);
+
   var OrigWS = window.WebSocket;
   var capturedWs = null;
   window.WebSocket = new Proxy(OrigWS, {

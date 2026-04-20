@@ -105,7 +105,10 @@ cd "${VAULT_DIR}"
 # Mouse off — tmux-mouse steals touch events and breaks browser swipe-scroll.
 cat > /root/.tmux.conf <<'TMUX_EOF'
 set -g history-limit 50000
-set -g mouse off
+# Mouse on: swipe in the terminal auto-enters copy-mode so you can scroll back.
+# Toolbar buttons bypass xterm entirely (direct WebSocket) so they're unaffected.
+set -g mouse on
+setw -g mode-keys vi
 set -g status-style 'bg=#1e1e1e,fg=#aaaaaa'
 set -g status-left ''
 set -g status-right '%H:%M '

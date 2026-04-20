@@ -61,6 +61,9 @@
     ["^D", "\x04"],
     ["^L", "\x0c"],
     ["C-b", "\x02"],
+    // C-b [ = enter tmux copy-mode; swipe or arrows to scroll, q to exit
+    ["scroll", "\x02["],
+    ["[q]", "q"],
     ["|", "|"],
     ["/", "/"],
     ["~", "~"],

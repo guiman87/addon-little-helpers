@@ -17,6 +17,8 @@ SYNC_INTERVAL=$(bashio::config 'sync_interval_minutes' || true)
 GWS_SECRET=$(bashio::config 'gws_client_secret_json' || true)
 NOTIFICATION_SERVICE=$(bashio::config 'notification_service' || true)
 NOTIFICATION_SERVICE="${NOTIFICATION_SERVICE:-notify}"
+BROU_USERNAME=$(bashio::config 'brou_username' || true)
+BROU_PASSWORD=$(bashio::config 'brou_password' || true)
 
 VAULT_DIR="/config/little-helpers"
 
@@ -101,6 +103,8 @@ export GH_TOKEN="${GITHUB_TOKEN}"
 export JIRA_EMAIL
 export JIRA_API_TOKEN
 export GWS_BASE="${VAULT_DIR}/.gws"
+export BROU_USERNAME
+export BROU_PASSWORD
 
 cd "${VAULT_DIR}"
 

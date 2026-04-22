@@ -71,6 +71,14 @@ fi
 # Normalize remote to HTTPS (vault remote may be SSH)
 git -C "${VAULT_DIR}" remote set-url origin "https://github.com/guiman87/little-helpers.git"
 
+# ── Share Claude Code memory with the vault ──────────────────────────────────
+# Memory lives in the vault at .claude/memory/ so it syncs between laptop and
+# addon via git. Claude Code looks it up at ~/.claude/projects/<cwd-hash>/memory/
+# — on the addon that hash is `-config-little-helpers`.
+mkdir -p "${VAULT_DIR}/.claude/memory"
+mkdir -p /config/claude-config/projects/-config-little-helpers
+ln -sfn "${VAULT_DIR}/.claude/memory" /config/claude-config/projects/-config-little-helpers/memory
+
 # ── Write gws client_secret if provided ──────────────────────────────────────
 if ! bashio::var.is_empty "${GWS_SECRET}"; then
     bashio::log.info "Writing gws client_secret.json..."

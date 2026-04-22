@@ -78,6 +78,14 @@ if ! bashio::var.is_empty "${GWS_SECRET}"; then
     chmod 600 "${VAULT_DIR}/.gws/client_secret.json"
 fi
 
+# gws 0.22+ reads client_secret.json from each account dir, not the parent.
+if [ -f "${VAULT_DIR}/.gws/client_secret.json" ]; then
+    for account_dir in "${VAULT_DIR}"/.gws/*/; do
+        [ -d "${account_dir}" ] || continue
+        ln -sfn ../client_secret.json "${account_dir}client_secret.json"
+    done
+fi
+
 # ── Authenticate gh CLI ───────────────────────────────────────────────────────
 if ! bashio::var.is_empty "${GITHUB_TOKEN}"; then
     printf '%s\n' "${GITHUB_TOKEN}" | gh auth login --with-token 2>/dev/null || \

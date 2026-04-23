@@ -105,6 +105,12 @@ SYNC_INTERVAL_SECS=$(( SYNC_INTERVAL * 60 ))
 bashio::log.info "Background sync every ${SYNC_INTERVAL} min (${SYNC_INTERVAL_SECS}s)"
 /sync.sh "${VAULT_DIR}" "${VAULT_BRANCH}" "${SYNC_INTERVAL_SECS}" &
 
+# ── Start nightly auto-ingest loop (BROU + Phase-2 drop folders) ──────────────
+# Runs scripts/nightly_ingest.py at 03:00 local every day. Inherits BROU env
+# vars exported below. Loop dies + restarts when the addon restarts.
+bashio::log.info "Nightly ingest at 03:00 local"
+/nightly_ingest_loop.sh "${VAULT_DIR}" 3 &
+
 # ── Export env for interactive terminal use ───────────────────────────────────
 # UTF-8 locale — without this Alpine/musl defaults to POSIX and Claude's
 # box-drawing characters render as garbage.

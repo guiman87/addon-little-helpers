@@ -103,6 +103,12 @@ open('/terminal/mobile-index.html', 'w').write(out)"; \
 # Copy addon scripts
 COPY run.sh /run.sh
 COPY sync.sh /sync.sh
-RUN chmod +x /run.sh /sync.sh
+COPY nightly_ingest_loop.sh /nightly_ingest_loop.sh
+RUN chmod +x /run.sh /sync.sh /nightly_ingest_loop.sh
+
+# PyYAML is required by scripts/nightly_ingest.py + scripts/ingest_common.py
+# (learned_rules.yml parsing). Installed via pip3 since Alpine apk doesn't
+# always carry it for the bundled Python.
+RUN pip3 install --no-cache-dir --break-system-packages pyyaml
 
 CMD ["/run.sh"]

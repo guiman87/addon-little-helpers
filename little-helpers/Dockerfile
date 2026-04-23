@@ -28,6 +28,9 @@ ARG BUILD_ARCH=amd64
 ENV HOME=/root
 
 # Install system packages
+# py3-yaml is required by scripts/ingest_common.py + scripts/nightly_ingest.py
+# (loads learned_rules.yml). Using the apk package avoids needing pip3 in the
+# image — Alpine doesn't ship pip3 by default with python3.
 RUN apk add --no-cache \
     bash \
     curl \
@@ -37,6 +40,7 @@ RUN apk add --no-cache \
     npm \
     openssh-client \
     python3 \
+    py3-yaml \
     tar \
     tmux \
     wget
@@ -105,10 +109,5 @@ COPY run.sh /run.sh
 COPY sync.sh /sync.sh
 COPY nightly_ingest_loop.sh /nightly_ingest_loop.sh
 RUN chmod +x /run.sh /sync.sh /nightly_ingest_loop.sh
-
-# PyYAML is required by scripts/nightly_ingest.py + scripts/ingest_common.py
-# (learned_rules.yml parsing). Installed via pip3 since Alpine apk doesn't
-# always carry it for the bundled Python.
-RUN pip3 install --no-cache-dir --break-system-packages pyyaml
 
 CMD ["/run.sh"]

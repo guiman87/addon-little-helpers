@@ -28,7 +28,7 @@ ARG BUILD_ARCH=amd64
 ENV HOME=/root
 
 # Install system packages
-# py3-yaml is required by scripts/ingest_common.py + scripts/nightly_ingest.py
+# py3-yaml is required by scripts/ingest_common.py + scripts/finance/nightly_ingest.py
 # (loads learned_rules.yml). Using the apk package avoids needing pip3 in the
 # image — Alpine doesn't ship pip3 by default with python3.
 RUN apk add --no-cache \

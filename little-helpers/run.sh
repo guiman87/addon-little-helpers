@@ -106,7 +106,7 @@ bashio::log.info "Background sync every ${SYNC_INTERVAL} min (${SYNC_INTERVAL_SE
 /sync.sh "${VAULT_DIR}" "${VAULT_BRANCH}" "${SYNC_INTERVAL_SECS}" &
 
 # ── Start nightly auto-ingest loop (BROU + Phase-2 drop folders) ──────────────
-# Runs scripts/nightly_ingest.py at 03:00 local every day. Inherits BROU env
+# Runs scripts/finance/nightly_ingest.py at 03:00 local every day. Inherits BROU env
 # vars exported below. Loop dies + restarts when the addon restarts.
 bashio::log.info "Nightly ingest at 03:00 local"
 /nightly_ingest_loop.sh "${VAULT_DIR}" 3 &

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Once-a-day background loop. Sleeps until next ${TARGET_HOUR}:00 local
-# time, then runs scripts/nightly_ingest.py. Mirrors the sync.sh pattern.
+# time, then runs scripts/finance/nightly_ingest.py. Mirrors the sync.sh pattern.
 # Output is appended to /tmp/nightly_ingest.log AND echoed to addon stdout
 # so it shows up in the HA addon log panel.
 #
@@ -41,6 +41,6 @@ while true; do
 
     bashio::log.info "Running nightly_ingest.py…"
     cd "${VAULT_DIR}" && \
-        python3 scripts/nightly_ingest.py 2>&1 | tee -a /tmp/nightly_ingest.log
+        python3 scripts/finance/nightly_ingest.py 2>&1 | tee -a /tmp/nightly_ingest.log
     bashio::log.info "nightly_ingest.py exited with $?"
 done

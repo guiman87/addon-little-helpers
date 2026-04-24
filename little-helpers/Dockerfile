@@ -40,6 +40,7 @@ RUN apk add --no-cache \
     npm \
     openssh-client \
     python3 \
+    py3-openpyxl \
     py3-yaml \
     tar \
     tmux \

@@ -24,9 +24,11 @@ bashio::log.info "Nightly ingest loop started (target hour: ${TARGET_HOUR}:00 lo
 
 while true; do
     now_epoch=$(date +%s)
-    next_epoch=$(date -d "today ${TARGET_HOUR}:00" +%s)
+    today=$(date +%Y-%m-%d)
+    next_epoch=$(date -d "${today} ${TARGET_HOUR}:00:00" +%s)
     if [ "${next_epoch}" -le "${now_epoch}" ]; then
-        next_epoch=$(date -d "tomorrow ${TARGET_HOUR}:00" +%s)
+        tomorrow=$(date -d "@$(( now_epoch + 86400 ))" +%Y-%m-%d)
+        next_epoch=$(date -d "${tomorrow} ${TARGET_HOUR}:00:00" +%s)
     fi
     sleep_seconds=$(( next_epoch - now_epoch ))
     bashio::log.info "Sleeping ${sleep_seconds}s until $(date -d "@${next_epoch}")"

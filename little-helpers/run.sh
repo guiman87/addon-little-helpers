@@ -100,18 +100,9 @@ if ! bashio::var.is_empty "${GITHUB_TOKEN}"; then
         bashio::log.warning "gh CLI auth failed — GitHub PRs may not work"
 fi
 
-# ── Start background git sync ─────────────────────────────────────────────────
-SYNC_INTERVAL_SECS=$(( SYNC_INTERVAL * 60 ))
-bashio::log.info "Background sync every ${SYNC_INTERVAL} min (${SYNC_INTERVAL_SECS}s)"
-/sync.sh "${VAULT_DIR}" "${VAULT_BRANCH}" "${SYNC_INTERVAL_SECS}" &
-
-# ── Start nightly auto-ingest loop (BROU + Phase-2 drop folders) ──────────────
-# Runs scripts/finance/nightly_ingest.py at 03:00 local every day. Inherits BROU env
-# vars exported below. Loop dies + restarts when the addon restarts.
-bashio::log.info "Nightly ingest at 03:00 local"
-/nightly_ingest_loop.sh "${VAULT_DIR}" 3 &
-
-# ── Export env for interactive terminal use ───────────────────────────────────
+# ── Export env ────────────────────────────────────────────────────────────────
+# Must come BEFORE the background loop forks so they inherit credentials
+# (notably BROU_USERNAME/BROU_PASSWORD for nightly_ingest_loop.sh → fetch_brou.py).
 # UTF-8 locale — without this Alpine/musl defaults to POSIX and Claude's
 # box-drawing characters render as garbage.
 export LANG=C.UTF-8
@@ -127,6 +118,17 @@ export JIRA_API_TOKEN
 export GWS_BASE="${VAULT_DIR}/.gws"
 export BROU_USERNAME
 export BROU_PASSWORD
+
+# ── Start background git sync ─────────────────────────────────────────────────
+SYNC_INTERVAL_SECS=$(( SYNC_INTERVAL * 60 ))
+bashio::log.info "Background sync every ${SYNC_INTERVAL} min (${SYNC_INTERVAL_SECS}s)"
+/sync.sh "${VAULT_DIR}" "${VAULT_BRANCH}" "${SYNC_INTERVAL_SECS}" &
+
+# ── Start nightly auto-ingest loop (BROU + Phase-2 drop folders) ──────────────
+# Runs scripts/finance/nightly_ingest.py at 23:00 local every day. Inherits BROU env
+# vars exported above. Loop dies + restarts when the addon restarts.
+bashio::log.info "Nightly ingest at 23:00 local"
+/nightly_ingest_loop.sh "${VAULT_DIR}" 23 &
 
 cd "${VAULT_DIR}"
 

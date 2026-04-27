@@ -1,5 +1,5 @@
 name: "Little Helpers"
-version: "1.4.6"
+version: "1.4.7"
 slug: "little-helpers"
 description: "Personal AI assistant for Guille's life wiki — daily briefings, knowledge base, integrations"
 init: false
@@ -12,6 +12,7 @@ ingress: true
 ingress_port: 7681
 panel_icon: mdi:robot
 panel_title: Little Helpers
+hassio_api: true
 map:
   - config:rw
 options:

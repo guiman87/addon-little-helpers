@@ -44,6 +44,7 @@ RUN apk add --no-cache \
     py3-yaml \
     tar \
     tmux \
+    tzdata \
     wget
 
 # Copy rz/sz from the builder stage — no compile toolchain in final image

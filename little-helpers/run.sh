@@ -24,6 +24,26 @@ BROU_PASSWORD=$(bashio::config 'brou_password' || true)
 
 VAULT_DIR="/config/little-helpers"
 
+# ── Match container timezone to Home Assistant ────────────────────────────────
+# Without this, the container runs in UTC and `nightly_ingest_hour: 23` fires
+# at 23:00 UTC (e.g. 20:00 in UY). Pull the timezone from the Supervisor
+# (requires `hassio_api: true` in config.yaml) and apply it before any
+# background loops fork so they inherit the same TZ.
+HA_TZ=""
+if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
+    HA_TZ=$(curl -sf -m 5 -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+            http://supervisor/info 2>/dev/null \
+            | jq -r '.data.timezone // empty' 2>/dev/null || true)
+fi
+if [ -n "${HA_TZ}" ] && [ -f "/usr/share/zoneinfo/${HA_TZ}" ]; then
+    bashio::log.info "Container timezone: ${HA_TZ} (from HA Supervisor)"
+    cp "/usr/share/zoneinfo/${HA_TZ}" /etc/localtime
+    echo "${HA_TZ}" > /etc/timezone
+    export TZ="${HA_TZ}"
+else
+    bashio::log.warning "Could not read timezone from Supervisor — falling back to UTC. Ensure 'hassio_api: true' is set in config.yaml and the HA system timezone is configured."
+fi
+
 # ── Persist Claude config across restarts ─────────────────────────────────────
 # /root/.claude/ and /root/.claude.json are both wiped on container restart.
 # Symlink both to /config/ so first-run setup, MCP credentials, and settings

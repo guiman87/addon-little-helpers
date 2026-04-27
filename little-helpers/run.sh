@@ -21,6 +21,8 @@ NOTIFICATION_SERVICE=$(bashio::config 'notification_service' || true)
 NOTIFICATION_SERVICE="${NOTIFICATION_SERVICE:-notify}"
 BROU_USERNAME=$(bashio::config 'brou_username' || true)
 BROU_PASSWORD=$(bashio::config 'brou_password' || true)
+OCA_USERNAME=$(bashio::config 'oca_username' || true)
+OCA_PASSWORD=$(bashio::config 'oca_password' || true)
 TIMEZONE_OPT=$(bashio::config 'timezone' || true)
 
 VAULT_DIR="/config/little-helpers"
@@ -165,7 +167,8 @@ fi
 
 # ── Export env ────────────────────────────────────────────────────────────────
 # Must come BEFORE the background loop forks so they inherit credentials
-# (notably BROU_USERNAME/BROU_PASSWORD for nightly_ingest_loop.sh → fetch_brou.py).
+# (notably BROU_USERNAME/BROU_PASSWORD for nightly_ingest_loop.sh → fetch_brou.py,
+# and OCA_USERNAME/OCA_PASSWORD for fetch_oca.py).
 # UTF-8 locale — without this Alpine/musl defaults to POSIX and Claude's
 # box-drawing characters render as garbage.
 export LANG=C.UTF-8
@@ -181,6 +184,8 @@ export JIRA_API_TOKEN
 export GWS_BASE="${VAULT_DIR}/.gws"
 export BROU_USERNAME
 export BROU_PASSWORD
+export OCA_USERNAME
+export OCA_PASSWORD
 
 # ── Start background git sync ─────────────────────────────────────────────────
 SYNC_INTERVAL_SECS=$(( SYNC_INTERVAL * 60 ))

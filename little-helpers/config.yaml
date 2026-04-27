@@ -1,5 +1,5 @@
 name: "Little Helpers"
-version: "1.4.9"
+version: "1.5.0"
 slug: "little-helpers"
 description: "Personal AI assistant for Guille's life wiki — daily briefings, knowledge base, integrations"
 init: false
@@ -28,6 +28,8 @@ options:
   notification_service: "notify"
   brou_username: ""
   brou_password: ""
+  oca_username: ""
+  oca_password: ""
   timezone: ""
 schema:
   anthropic_api_key: password
@@ -42,4 +44,6 @@ schema:
   notification_service: str
   brou_username: str
   brou_password: password
+  oca_username: str
+  oca_password: password
   timezone: str?

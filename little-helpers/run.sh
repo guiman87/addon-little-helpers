@@ -14,6 +14,8 @@ JIRA_API_TOKEN=$(bashio::config 'jira_api_token' || true)
 VAULT_REPO=$(bashio::config 'vault_repo' || true)
 VAULT_BRANCH=$(bashio::config 'vault_branch' || true)
 SYNC_INTERVAL=$(bashio::config 'sync_interval_minutes' || true)
+NIGHTLY_INGEST_HOUR=$(bashio::config 'nightly_ingest_hour' || true)
+NIGHTLY_INGEST_HOUR="${NIGHTLY_INGEST_HOUR:-23}"
 GWS_SECRET=$(bashio::config 'gws_client_secret_json' || true)
 NOTIFICATION_SERVICE=$(bashio::config 'notification_service' || true)
 NOTIFICATION_SERVICE="${NOTIFICATION_SERVICE:-notify}"
@@ -125,10 +127,11 @@ bashio::log.info "Background sync every ${SYNC_INTERVAL} min (${SYNC_INTERVAL_SE
 /sync.sh "${VAULT_DIR}" "${VAULT_BRANCH}" "${SYNC_INTERVAL_SECS}" &
 
 # ── Start nightly auto-ingest loop (BROU + Phase-2 drop folders) ──────────────
-# Runs scripts/finance/nightly_ingest.py at 23:00 local every day. Inherits BROU env
-# vars exported above. Loop dies + restarts when the addon restarts.
-bashio::log.info "Nightly ingest at 23:00 local"
-/nightly_ingest_loop.sh "${VAULT_DIR}" 23 &
+# Loop script lives in the vault so the same code runs on the laptop. Inherits
+# BROU env vars exported above. Loop dies + restarts when the addon restarts.
+bashio::log.info "Nightly ingest at ${NIGHTLY_INGEST_HOUR}:00 local"
+"${VAULT_DIR}/scripts/finance/nightly_ingest_loop.sh" \
+    --vault "${VAULT_DIR}" --hour "${NIGHTLY_INGEST_HOUR}" &
 
 cd "${VAULT_DIR}"
 

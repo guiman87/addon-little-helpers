@@ -106,9 +106,10 @@ open('/terminal/mobile-index.html', 'w').write(out)"; \
     rm -f /tmp/ttyd-default.html /tmp/ttyd-build.log
 
 # Copy addon scripts
+# Note: the nightly ingest loop now lives in the vault at
+# scripts/finance/nightly_ingest_loop.sh so the same code runs on the laptop.
 COPY run.sh /run.sh
 COPY sync.sh /sync.sh
-COPY nightly_ingest_loop.sh /nightly_ingest_loop.sh
-RUN chmod +x /run.sh /sync.sh /nightly_ingest_loop.sh
+RUN chmod +x /run.sh /sync.sh
 
 CMD ["/run.sh"]

@@ -1,5 +1,5 @@
 name: "Little Helpers"
-version: "1.4.5"
+version: "1.4.6"
 slug: "little-helpers"
 description: "Personal AI assistant for Guille's life wiki — daily briefings, knowledge base, integrations"
 init: false
@@ -22,6 +22,7 @@ options:
   vault_repo: "https://github.com/guiman87/little-helpers.git"
   vault_branch: "main"
   sync_interval_minutes: 15
+  nightly_ingest_hour: 23
   gws_client_secret_json: ""
   notification_service: "notify"
   brou_username: ""
@@ -34,6 +35,7 @@ schema:
   vault_repo: str
   vault_branch: str
   sync_interval_minutes: int
+  nightly_ingest_hour: int(0,23)
   gws_client_secret_json: password
   notification_service: str
   brou_username: str

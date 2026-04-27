@@ -21,27 +21,54 @@ NOTIFICATION_SERVICE=$(bashio::config 'notification_service' || true)
 NOTIFICATION_SERVICE="${NOTIFICATION_SERVICE:-notify}"
 BROU_USERNAME=$(bashio::config 'brou_username' || true)
 BROU_PASSWORD=$(bashio::config 'brou_password' || true)
+TIMEZONE_OPT=$(bashio::config 'timezone' || true)
 
 VAULT_DIR="/config/little-helpers"
 
 # ── Match container timezone to Home Assistant ────────────────────────────────
 # Without this, the container runs in UTC and `nightly_ingest_hour: 23` fires
-# at 23:00 UTC (e.g. 20:00 in UY). Pull the timezone from the Supervisor
-# (requires `hassio_api: true` in config.yaml) and apply it before any
-# background loops fork so they inherit the same TZ.
+# at 23:00 UTC (e.g. 20:00 in UY). Three sources, in order of precedence:
+#   1. `timezone` addon option — manual override (e.g. "America/Montevideo")
+#   2. Supervisor /info endpoint — needs `hassio_api: true` (requires a full
+#      addon reinstall, not just an update, for HA to grant the token)
+#   3. Supervisor /supervisor/info — alternate endpoint with same data
+# Falls back to UTC with diagnostics if none of the above work.
 HA_TZ=""
-if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
-    HA_TZ=$(curl -sf -m 5 -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-            http://supervisor/info 2>/dev/null \
-            | jq -r '.data.timezone // empty' 2>/dev/null || true)
+TZ_SOURCE=""
+
+if [ -n "${TIMEZONE_OPT}" ]; then
+    HA_TZ="${TIMEZONE_OPT}"
+    TZ_SOURCE="config option"
+elif [ -n "${SUPERVISOR_TOKEN:-}" ]; then
+    for path in "info" "supervisor/info"; do
+        resp=$(curl -s -m 5 -w '\n%{http_code}' \
+               -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+               "http://supervisor/${path}" 2>/dev/null || echo $'\n000')
+        body="${resp%$'\n'*}"
+        code="${resp##*$'\n'}"
+        if [ "${code}" = "200" ]; then
+            HA_TZ=$(printf '%s' "${body}" | jq -r '.data.timezone // empty' 2>/dev/null || true)
+            if [ -n "${HA_TZ}" ]; then
+                TZ_SOURCE="Supervisor /${path}"
+                break
+            fi
+        else
+            bashio::log.debug "Supervisor /${path} returned HTTP ${code}"
+        fi
+    done
+else
+    bashio::log.debug "SUPERVISOR_TOKEN not set — hassio_api permission likely not granted yet (a fresh addon install may be required for new permissions)."
 fi
+
 if [ -n "${HA_TZ}" ] && [ -f "/usr/share/zoneinfo/${HA_TZ}" ]; then
-    bashio::log.info "Container timezone: ${HA_TZ} (from HA Supervisor)"
+    bashio::log.info "Container timezone: ${HA_TZ} (from ${TZ_SOURCE})"
     cp "/usr/share/zoneinfo/${HA_TZ}" /etc/localtime
     echo "${HA_TZ}" > /etc/timezone
     export TZ="${HA_TZ}"
+elif [ -n "${HA_TZ}" ]; then
+    bashio::log.warning "Timezone '${HA_TZ}' from ${TZ_SOURCE} is not a valid zoneinfo entry — falling back to UTC."
 else
-    bashio::log.warning "Could not read timezone from Supervisor — falling back to UTC. Ensure 'hassio_api: true' is set in config.yaml and the HA system timezone is configured."
+    bashio::log.warning "Could not detect timezone — falling back to UTC. Set the 'timezone' addon option (e.g. 'America/Montevideo') or reinstall the addon so HA grants the hassio_api permission."
 fi
 
 # ── Persist Claude config across restarts ─────────────────────────────────────

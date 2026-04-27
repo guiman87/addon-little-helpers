@@ -128,6 +128,20 @@ mkdir -p "${VAULT_DIR}/.claude/memory"
 mkdir -p /config/claude-config/projects/-config-little-helpers
 ln -sfn "${VAULT_DIR}/.claude/memory" /config/claude-config/projects/-config-little-helpers/memory
 
+# ── Populate the finance web view at /config/www/finance/ ────────────────────
+# Without this, /local/finance/ would be empty until the next nightly_ingest
+# run. Generate JSON from the current ledger and rsync the static tree on
+# every container start so the panel has fresh data after addon updates.
+if [ -x "${VAULT_DIR}/scripts/finance/regen_web_data.py" ]; then
+    bashio::log.info "Refreshing finance web view at /config/www/finance/..."
+    if python3 "${VAULT_DIR}/scripts/finance/regen_web_data.py" --quiet 2>&1 \
+            | sed 's/^/  /'; then
+        bashio::log.info "Finance web view ready (sidebar entry: see addon README)."
+    else
+        bashio::log.warning "regen_web_data.py exited non-zero — /local/finance/ may be stale."
+    fi
+fi
+
 # ── Write gws client_secret if provided ──────────────────────────────────────
 if ! bashio::var.is_empty "${GWS_SECRET}"; then
     bashio::log.info "Writing gws client_secret.json..."

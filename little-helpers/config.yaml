@@ -1,5 +1,5 @@
 name: "Little Helpers"
-version: "1.4.8"
+version: "1.4.9"
 slug: "little-helpers"
 description: "Personal AI assistant for Guille's life wiki — daily briefings, knowledge base, integrations"
 init: false
